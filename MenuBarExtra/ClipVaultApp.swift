@@ -17,6 +17,7 @@ struct ClipVaultApp: App {
     }()
 
     @State private var pasteboardMonitor: PasteboardMonitor?
+    @State private var hotKeyManager: HotKeyManager?
 
     var body: some Scene {
         MenuBarExtra("ClipVault", systemImage: "doc.on.clipboard") {
@@ -27,6 +28,9 @@ struct ClipVaultApp: App {
                         let monitor = PasteboardMonitor(modelContext: sharedModelContainer.mainContext)
                         monitor.startMonitoring()
                         pasteboardMonitor = monitor
+                    }
+                    if hotKeyManager == nil {
+                        hotKeyManager = HotKeyManager(modelContainer: sharedModelContainer)
                     }
                 }
         }

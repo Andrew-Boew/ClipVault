@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 
 struct MenuBarView: View {
+    @Environment(\.modelContext) private var modelContext
+
     @Query(sort: \ClipItem.createdAt, order: .reverse)
     private var allItems: [ClipItem]
 
@@ -28,6 +30,11 @@ struct MenuBarView: View {
 
             Divider()
 
+            Button("Clear History") {
+                clearHistory()
+            }
+            .disabled(allItems.isEmpty)
+
             Button("Quit ClipVault") {
                 NSApplication.shared.terminate(nil)
             }
@@ -38,5 +45,12 @@ struct MenuBarView: View {
     private func copyToPasteboard(_ item: ClipItem) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(item.textContent ?? "", forType: .string)
+    }
+
+    private func clearHistory() {
+        for item in allItems {
+            modelContext.delete(item)
+        }
+        try? modelContext.save()
     }
 }
