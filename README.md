@@ -1,65 +1,65 @@
 # ClipVault
 
-**Smart clipboard history for macOS.** Lives in your menu bar, remembers everything you copy, and pastes it back with a global hotkey.
+**Умная история буфера обмена для macOS.** Живёт в менюбаре, запоминает всё, что вы копируете, и вставляет обратно по горячей клавише.
 
-macOS only remembers the last thing you copied — copy something new and the previous item is gone. ClipVault fixes that.
+Знакомая ситуация: скопировал ссылку, потом скопировал что-то ещё — и всё, ссылка потерялась. macOS помнит только последнее. ClipVault исправляет это.
 
-<!-- TODO: add demo GIF: ⌘⇧V → search → Enter → pasted -->
+<!-- TODO: добавить демо-GIF: ⌘⇧V → поиск → Enter → вставилось -->
 
-## Features
+## Что умеет
 
-- **Clipboard history** — text, links, images, and files, captured automatically in the background
-- **Global hotkey** — press <kbd>⌘⇧V</kbd> anywhere, pick an item, hit <kbd>Enter</kbd> — it pastes straight into the active app
-- **Search** — filter history by content or source app as you type
-- **Multi-select paste** — <kbd>⌘</kbd>-click several items and paste them together (files combine, texts join)
-- **Pinning** — keep frequently used items at the top; pins survive history limits and Clear History
-- **Screenshot auto-copy** — take a screenshot (<kbd>⌘⇧4</kbd>) and it's instantly ready to paste, no clicking the thumbnail
-- **Deduplication** — copying the same thing twice doesn't clutter your history (SHA-256 content hashing)
-- **History limits** — cap by item count and age, auto-pruned on launch and on every save
-- **Launch at login**, configurable hotkey, and a native Settings window
+- **История копирований** — текст, ссылки, картинки и файлы сохраняются автоматически, пока приложение работает в фоне
+- **Глобальный хоткей** — нажмите <kbd>⌘⇧V</kbd> в любом приложении, выберите запись, нажмите <kbd>Enter</kbd> — и она вставится туда, где вы работали
+- **Поиск** — начните печатать, и история отфильтруется по содержимому или приложению-источнику
+- **Вставка нескольких записей** — выделите несколько через <kbd>⌘</kbd>-клик и вставьте разом: файлы объединятся, тексты склеятся
+- **Закрепление** — нужное часто? Прикрепите, и запись всегда будет сверху. Закреплённое переживает и лимиты, и очистку истории
+- **Скриншот сразу в буфер** — сделали <kbd>⌘⇧4</kbd>, и снимок уже готов к вставке. Не нужно ловить плавающую миниатюрку в углу
+- **Без дублей** — скопировали одно и то же дважды? В истории будет одна запись
+- **Лимиты** — история не разрастается бесконечно: ограничение по количеству и возрасту записей
+- **Автозапуск при входе**, настраиваемый хоткей, нативное окно настроек
 
-## Privacy
+## Приватность
 
-- **Local only.** Everything stays on your Mac — SwiftData store and image files in `~/Library/Application Support`. No network access, no analytics, nothing leaves the machine.
-- **Excluded apps.** Add any app (password managers, terminals) to the exclusion list and nothing copied from it is recorded.
-- **One-click wipe.** Clear History removes database entries *and* image files from disk.
-- **Honest limitation:** text you select and copy by hand is indistinguishable from any other text — no clipboard manager can tell it's a password. The exclusion list is the reliable layer; use it for sensitive apps.
+- **Всё хранится локально.** База и картинки лежат на вашем Mac в `~/Library/Application Support`. Никакой сети, никакой аналитики — данные не покидают компьютер.
+- **Исключённые приложения.** Добавьте менеджер паролей или терминал в список исключений — и всё, что копируется из них, не попадёт в историю.
+- **Очистка одной кнопкой.** Clear History удаляет и записи из базы, и файлы картинок с диска.
+- **Честно об ограничении:** если вы выделили пароль мышкой и нажали ⌘C — для системы это обычный текст, и ни один менеджер буфера в мире не отличит его от остального. Надёжная защита — список исключений: внесите туда приложения с чувствительными данными.
 
-## Requirements
+## Требования
 
-- macOS 14+
-- Accessibility permission (only used to simulate <kbd>⌘V</kbd> for pasting — that's the entire reason)
+- macOS 14 или новее
+- Разрешение Accessibility — нужно только для одного: эмулировать <kbd>⌘V</kbd>, чтобы вставка работала
 
-## Building
+## Как собрать
 
 ```bash
-git clone <this repo>
-open MenuBarExtra.xcodeproj
+git clone <адрес репозитория>
+open ClipVault.xcodeproj
 ```
 
-Build and run in Xcode (⌘R). Swift Package Manager resolves the single dependency ([KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts)) automatically.
+Дальше просто ⌘R в Xcode. Единственная зависимость ([KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts)) подтянется автоматически через Swift Package Manager.
 
-On first paste, macOS will ask for Accessibility permission: **System Settings → Privacy & Security → Accessibility** → enable ClipVault.
+При первой вставке macOS попросит разрешение: **Системные настройки → Конфиденциальность и безопасность → Универсальный доступ** → включите ClipVault.
 
-## Architecture
+## Как устроено
 
 ```
-PasteboardMonitor ──► ClipStore (SwiftData) ──► Views (MenuBarExtra, HistoryWindow)
-   polls NSPasteboard      dedup, limits,            search, multi-select,
-   every 0.5 s             pinned priority           pinning, settings
+PasteboardMonitor ──► ClipStore (SwiftData) ──► интерфейс (менюбар, окно истории)
+   опрос буфера            дедупликация,             поиск, мультивыбор,
+   каждые 0.5 с            лимиты, pinned            закрепление, настройки
 
-HotKeyManager ──► floating NSPanel with history      Paster ──► NSPasteboard + CGEvent ⌘V
-ScreenshotWatcher ──► kqueue watch on screenshot folder → clipboard in ~0.15 s
+HotKeyManager ──► плавающая панель истории       Paster ──► буфер + CGEvent ⌘V
+ScreenshotWatcher ──► kqueue-наблюдение за папкой скриншотов → буфер за ~0.15 с
 ```
 
-Key implementation details:
+Интересные детали реализации:
 
-- **Clipboard monitoring** polls `changeCount` (there is no notification API) — near-zero CPU
-- **Global hotkey panel** is a custom non-activating `NSPanel` (`canBecomeKey` + `acceptsFirstMouse`), so it opens over any app without stealing focus from your work
-- **Screenshot detection** uses a kernel-level directory watch (`DispatchSource`), not Spotlight — ~0.15 s from file to clipboard
-- **Images** are stored as PNG files on disk; the database keeps only paths
-- **Files** are stored as references — pasting into Finder pastes the original files
+- **Слежение за буфером** — опрос `changeCount` (API уведомлений у macOS просто нет). Замерено: 0.0% CPU в фоне
+- **Панель по хоткею** — кастомная неактивирующая `NSPanel` (`canBecomeKey` + `acceptsFirstMouse`): открывается поверх любого приложения, не отбирая фокус у вашей работы
+- **Скриншоты ловятся** через kqueue-наблюдение за папкой на уровне ядра, а не через Spotlight — от файла до буфера ~0.15 секунды
+- **Картинки** хранятся PNG-файлами на диске, в базе — только пути
+- **Файлы** хранятся ссылками: вставка в Finder вставляет сами файлы
 
-## Tech stack
+## Стек
 
 Swift 5.9 · SwiftUI · SwiftData · AppKit (NSPasteboard, NSPanel, CGEvent) · KeyboardShortcuts · SMAppService
