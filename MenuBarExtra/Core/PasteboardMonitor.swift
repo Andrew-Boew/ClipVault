@@ -32,7 +32,7 @@ class PasteboardMonitor {
         guard currentChangeCount != lastChangeCount else { return }
         lastChangeCount = currentChangeCount
 
-        if let imageItem = readImage() {
+        if let imageItem = readImage() ?? readImageFile() {
             save(imageItem)
             return
         }
@@ -43,8 +43,23 @@ class PasteboardMonitor {
     }
 
     private func readImage() -> ClipItem? {
-        guard let imageData = NSPasteboard.general.data(forType: .tiff) ?? NSPasteboard.general.data(forType: .png),
-              let bitmap = NSBitmapImageRep(data: imageData),
+        guard let imageData = NSPasteboard.general.data(forType: .tiff) ?? NSPasteboard.general.data(forType: .png) else { return nil }
+        return makeImageItem(from: imageData)
+    }
+
+    private func readImageFile() -> ClipItem? {
+        guard let urls = NSPasteboard.general.readObjects(
+                  forClasses: [NSURL.self],
+                  options: [.urlReadingFileURLsOnly: true]
+              ) as? [URL],
+              let fileURL = urls.first,
+              let imageData = try? Data(contentsOf: fileURL) else { return nil }
+
+        return makeImageItem(from: imageData)
+    }
+
+    private func makeImageItem(from imageData: Data) -> ClipItem? {
+        guard let bitmap = NSBitmapImageRep(data: imageData),
               let pngData = bitmap.representation(using: .png, properties: [:]) else { return nil }
 
         let hash = sha256(pngData)

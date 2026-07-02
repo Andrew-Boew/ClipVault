@@ -16,23 +16,21 @@ struct ClipVaultApp: App {
         }
     }()
 
-    @State private var pasteboardMonitor: PasteboardMonitor?
-    @State private var hotKeyManager: HotKeyManager?
+    private let pasteboardMonitor: PasteboardMonitor
+    private let hotKeyManager: HotKeyManager
+
+    init() {
+        let container = sharedModelContainer
+        let monitor = PasteboardMonitor(modelContext: container.mainContext)
+        monitor.startMonitoring()
+        pasteboardMonitor = monitor
+        hotKeyManager = HotKeyManager(modelContainer: container)
+    }
 
     var body: some Scene {
         MenuBarExtra("ClipVault", systemImage: "doc.on.clipboard") {
             MenuBarView()
                 .modelContainer(sharedModelContainer)
-                .onAppear {
-                    if pasteboardMonitor == nil {
-                        let monitor = PasteboardMonitor(modelContext: sharedModelContainer.mainContext)
-                        monitor.startMonitoring()
-                        pasteboardMonitor = monitor
-                    }
-                    if hotKeyManager == nil {
-                        hotKeyManager = HotKeyManager(modelContainer: sharedModelContainer)
-                    }
-                }
         }
     }
 }

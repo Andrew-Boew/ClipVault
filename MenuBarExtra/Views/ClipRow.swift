@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct ClipRow: View {
     let item: ClipItem
@@ -6,9 +7,17 @@ struct ClipRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: iconName)
-                .frame(width: 16)
-                .foregroundStyle(isSelected ? Color.white : .secondary)
+            if item.type == .image, let thumbnail {
+                Image(nsImage: thumbnail)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 44, height: 32)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+            } else {
+                Image(systemName: iconName)
+                    .frame(width: 16)
+                    .foregroundStyle(isSelected ? Color.white : .secondary)
+            }
 
             Text(item.preview)
                 .lineLimit(1)
@@ -22,6 +31,11 @@ struct ClipRow: View {
         .background(isSelected ? Color.accentColor : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .contentShape(Rectangle())
+    }
+
+    private var thumbnail: NSImage? {
+        guard let imagePath = item.imagePath else { return nil }
+        return NSImage(contentsOfFile: imagePath)
     }
 
     private var iconName: String {
