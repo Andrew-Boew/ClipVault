@@ -57,6 +57,11 @@ struct SettingsView: View {
                 }
             }
 
+            Section("About") {
+                LabeledContent("Version", value: appVersion)
+                LabeledContent("Storage", value: "Local only — nothing leaves your Mac")
+            }
+
             Section {
                 Toggle("Copy new screenshots to clipboard", isOn: $copyScreenshots)
                 Toggle("Launch at login", isOn: $launchAtLogin)
@@ -67,6 +72,12 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(width: 420, height: 480)
+    }
+
+    private var appVersion: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return "\(version) (\(build))"
     }
 
     private var runningAppNames: [String] {
