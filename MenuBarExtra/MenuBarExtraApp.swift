@@ -1,10 +1,3 @@
-//
-//  MenuBarExtraApp.swift
-//  MenuBarExtra
-//
-//  Created by Андрей Боев on 02.07.2026.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -12,7 +5,7 @@ import SwiftData
 struct MenuBarExtraApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            ClipItem.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
