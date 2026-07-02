@@ -8,7 +8,8 @@ struct HistoryWindow: View {
     private var items: [ClipItem]
 
     @State private var searchText = ""
-    @State private var selectedID: ClipItem.ID?
+    @State private var selectedIDs: Set<ClipItem.ID> = []
+    @State private var anchorID: ClipItem.ID?
     @FocusState private var isSearchFocused: Bool
 
     private var filteredItems: [ClipItem] {
@@ -33,14 +34,15 @@ struct HistoryWindow: View {
             ScrollView {
                 LazyVStack(spacing: 2) {
                     ForEach(filteredItems) { item in
-                        ClipRow(item: item, isSelected: item.id == selectedID)
+                        ClipRow(item: item, isSelected: selectedIDs.contains(item.id))
                             .id(item.id)
                             .onTapGesture {
-                                selectedID = item.id
+                                handleTap(item)
                             }
                             .simultaneousGesture(
                                 TapGesture(count: 2).onEnded {
-                                    selectedID = item.id
+                                    selectedIDs = [item.id]
+                                    anchorID = item.id
                                     pasteSelected()
                                 }
                             )
@@ -50,6 +52,7 @@ struct HistoryWindow: View {
                                     try? modelContext.save()
                                 }
                                 Button("Delete", role: .destructive) {
+                                    selectedIDs.remove(item.id)
                                     ClipStore.delete(item, in: modelContext)
                                     try? modelContext.save()
                                 }
@@ -65,13 +68,13 @@ struct HistoryWindow: View {
                 bottomBar
             }
             .onAppear {
-                selectedID = filteredItems.first?.id
+                selectFirst()
                 isSearchFocused = true
             }
             .onChange(of: searchText) {
-                selectedID = filteredItems.first?.id
-                if let selectedID {
-                    proxy.scrollTo(selectedID, anchor: .top)
+                selectFirst()
+                if let anchorID {
+                    proxy.scrollTo(anchorID, anchor: .top)
                 }
             }
         }
@@ -105,14 +108,15 @@ struct HistoryWindow: View {
 
     private var bottomBar: some View {
         HStack {
-            Text("\(filteredItems.count) items")
+            Text(selectionSummary)
                 .foregroundStyle(.secondary)
 
             Spacer()
 
             Button("Clear History") {
                 ClipStore.clearHistory(in: modelContext)
-                selectedID = nil
+                selectedIDs = []
+                anchorID = nil
             }
             .disabled(items.isEmpty)
         }
@@ -122,18 +126,43 @@ struct HistoryWindow: View {
         .background(.bar)
     }
 
+    private var selectionSummary: String {
+        selectedIDs.count > 1
+            ? "\(filteredItems.count) items · \(selectedIDs.count) selected"
+            : "\(filteredItems.count) items"
+    }
+
+    private func handleTap(_ item: ClipItem) {
+        if NSEvent.modifierFlags.contains(.command) {
+            if selectedIDs.contains(item.id) {
+                selectedIDs.remove(item.id)
+            } else {
+                selectedIDs.insert(item.id)
+            }
+        } else {
+            selectedIDs = [item.id]
+        }
+        anchorID = item.id
+    }
+
+    private func selectFirst() {
+        anchorID = filteredItems.first?.id
+        selectedIDs = anchorID.map { [$0] } ?? []
+    }
+
     private func moveSelection(_ delta: Int, proxy: ScrollViewProxy) {
         let visible = filteredItems
         guard !visible.isEmpty else { return }
-        let currentIndex = visible.firstIndex(where: { $0.id == selectedID }) ?? 0
+        let currentIndex = visible.firstIndex(where: { $0.id == anchorID }) ?? 0
         let newIndex = min(max(currentIndex + delta, 0), visible.count - 1)
-        selectedID = visible[newIndex].id
+        anchorID = visible[newIndex].id
+        selectedIDs = [visible[newIndex].id]
         proxy.scrollTo(visible[newIndex].id, anchor: .center)
     }
 
     private func pasteSelected() {
-        guard let selectedID,
-              let item = filteredItems.first(where: { $0.id == selectedID }) else { return }
-        Paster.paste(item)
+        let selection = filteredItems.filter { selectedIDs.contains($0.id) }
+        guard !selection.isEmpty else { return }
+        Paster.paste(selection)
     }
 }

@@ -34,7 +34,12 @@ class PasteboardMonitor {
 
         if isExcludedApp() { return }
 
-        if let imageItem = readImage() ?? readImageFile() {
+        if let fileItem = readFiles() {
+            save(fileItem)
+            return
+        }
+
+        if let imageItem = readImage() {
             save(imageItem)
             return
         }
@@ -58,15 +63,35 @@ class PasteboardMonitor {
         return makeImageItem(from: imageData)
     }
 
-    private func readImageFile() -> ClipItem? {
+    private func readFiles() -> ClipItem? {
         guard let urls = NSPasteboard.general.readObjects(
                   forClasses: [NSURL.self],
                   options: [.urlReadingFileURLsOnly: true]
               ) as? [URL],
-              let fileURL = urls.first,
-              let imageData = try? Data(contentsOf: fileURL) else { return nil }
+              !urls.isEmpty else { return nil }
 
-        return makeImageItem(from: imageData)
+        if urls.count == 1,
+           let imageData = try? Data(contentsOf: urls[0]),
+           NSBitmapImageRep(data: imageData) != nil {
+            return makeImageItem(from: imageData)
+        }
+
+        let paths = urls.map(\.path)
+        let hash = sha256(Data(paths.joined(separator: "\n").utf8))
+        guard hash != lastSavedHash else { return nil }
+
+        let names = urls.map(\.lastPathComponent)
+        let preview = urls.count == 1
+            ? names[0]
+            : "\(urls.count) files: \(names.joined(separator: ", "))"
+
+        return ClipItem(
+            type: .file,
+            filePaths: paths,
+            preview: String(preview.prefix(100)),
+            sourceApp: frontmostAppName,
+            contentHash: hash
+        )
     }
 
     private func makeImageItem(from imageData: Data) -> ClipItem? {

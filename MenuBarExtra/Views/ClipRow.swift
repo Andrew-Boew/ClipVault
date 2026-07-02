@@ -49,6 +49,7 @@ struct ClipRow: View {
         case .text: return "doc.text"
         case .url: return "link"
         case .image: return "photo"
+        case .file: return "doc.on.doc"
         }
     }
 }

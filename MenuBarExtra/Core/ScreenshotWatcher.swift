@@ -1,32 +1,43 @@
 import Foundation
 import AppKit
+import Darwin
 
 final class ScreenshotWatcher {
-    private let query = NSMetadataQuery()
-    private var startedAt = Date()
+    private var source: DispatchSourceFileSystemObject?
+    private var directoryDescriptor: CInt = -1
+    private var knownFiles: Set<String> = []
+    private var directoryPath = ""
+
+    private static let namePrefixes = ["Screenshot", "Снимок"]
 
     func start() {
-        startedAt = Date()
+        directoryPath = screenshotDirectory
+        directoryDescriptor = open(directoryPath, O_EVTONLY)
+        guard directoryDescriptor >= 0 else { return }
 
-        query.predicate = NSCompoundPredicate(orPredicateWithSubpredicates: [
-            NSPredicate(format: "kMDItemIsScreenCapture == 1"),
-            NSPredicate(format: "kMDItemFSName BEGINSWITH 'Screenshot'"),
-        ])
-        query.searchScopes = [screenshotDirectory]
+        knownFiles = screenshotFiles()
 
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleUpdate(_:)),
-            name: .NSMetadataQueryDidUpdate,
-            object: query
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: directoryDescriptor,
+            eventMask: .write,
+            queue: .main
         )
-        query.enableUpdates()
-        query.start()
+        source.setEventHandler { [weak self] in
+            self?.directoryChanged()
+        }
+        source.setCancelHandler { [weak self] in
+            if let fd = self?.directoryDescriptor, fd >= 0 {
+                close(fd)
+                self?.directoryDescriptor = -1
+            }
+        }
+        source.resume()
+        self.source = source
     }
 
     func stop() {
-        query.stop()
-        NotificationCenter.default.removeObserver(self)
+        source?.cancel()
+        source = nil
     }
 
     private var screenshotDirectory: String {
@@ -37,19 +48,39 @@ final class ScreenshotWatcher {
         return FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask)[0].path
     }
 
-    @objc private func handleUpdate(_ notification: Notification) {
+    private func screenshotFiles() -> Set<String> {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: directoryPath)) ?? []
+        return Set(names.filter { name in
+            !name.hasPrefix(".") && name.lowercased().hasSuffix(".png")
+        })
+    }
+
+    private func directoryChanged() {
         guard AppSettings.copyScreenshotsToClipboard else { return }
-        guard let added = notification.userInfo?[NSMetadataQueryUpdateAddedItemsKey] as? [NSMetadataItem],
-              let item = added.last,
-              let path = item.value(forAttribute: NSMetadataItemPathKey) as? String else { return }
 
-        if let created = item.value(forAttribute: NSMetadataItemFSCreationDateKey) as? Date,
-           created < startedAt { return }
+        let current = screenshotFiles()
+        let added = current.subtracting(knownFiles)
+        knownFiles = current
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            guard let image = NSImage(contentsOfFile: path) else { return }
+        guard let name = added.first(where: isScreenshotName) else { return }
+        let path = (directoryPath as NSString).appendingPathComponent(name)
+        copyWhenReady(path: path, attemptsLeft: 10)
+    }
+
+    private func isScreenshotName(_ name: String) -> Bool {
+        Self.namePrefixes.contains { name.hasPrefix($0) }
+    }
+
+    private func copyWhenReady(path: String, attemptsLeft: Int) {
+        guard attemptsLeft > 0 else { return }
+
+        if let image = NSImage(contentsOfFile: path), image.isValid {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.writeObjects([image])
+        } else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.copyWhenReady(path: path, attemptsLeft: attemptsLeft - 1)
+            }
         }
     }
 

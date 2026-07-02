@@ -5,6 +5,7 @@ enum ClipType: String, Codable {
     case text
     case url
     case image
+    case file
 }
 
 @Model
@@ -13,6 +14,7 @@ final class ClipItem {
     var type: ClipType
     var textContent: String?
     var imagePath: String?
+    var filePaths: [String]? = nil
     var preview: String
     var createdAt: Date
     var isPinned: Bool
@@ -24,6 +26,7 @@ final class ClipItem {
         type: ClipType,
         textContent: String? = nil,
         imagePath: String? = nil,
+        filePaths: [String]? = nil,
         preview: String,
         createdAt: Date = Date(),
         isPinned: Bool = false,
@@ -34,6 +37,7 @@ final class ClipItem {
         self.type = type
         self.textContent = textContent
         self.imagePath = imagePath
+        self.filePaths = filePaths
         self.preview = preview
         self.createdAt = createdAt
         self.isPinned = isPinned
