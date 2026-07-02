@@ -9,7 +9,7 @@ enum ClipType: String, Codable {
 
 @Model
 final class ClipItem {
-    @Attribute(.unique)var id: UUID
+    @Attribute(.unique) var id: UUID
     var type: ClipType
     var textContent: String?
     var imagePath: String?
