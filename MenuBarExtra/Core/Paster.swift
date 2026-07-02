@@ -3,10 +3,7 @@ import AppKit
 
 enum Paster {
     static func paste(_ item: ClipItem) {
-        guard let text = item.textContent else { return }
-
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+        guard copy(item) else { return }
 
         guard AXIsProcessTrusted() else {
             promptForAccessibilityAccess()
@@ -14,6 +11,24 @@ enum Paster {
         }
 
         simulatePasteKeystroke()
+    }
+
+    @discardableResult
+    static func copy(_ item: ClipItem) -> Bool {
+        switch item.type {
+        case .text, .url:
+            guard let text = item.textContent else { return false }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+            return true
+
+        case .image:
+            guard let imagePath = item.imagePath,
+                  let image = NSImage(contentsOfFile: imagePath) else { return false }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.writeObjects([image])
+            return true
+        }
     }
 
     private static func simulatePasteKeystroke() {

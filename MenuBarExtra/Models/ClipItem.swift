@@ -17,6 +17,7 @@ final class ClipItem {
     var createdAt: Date
     var isPinned: Bool
     var sourceApp: String?
+    var contentHash: String = ""
 
     init(
         id: UUID = UUID(),
@@ -26,7 +27,8 @@ final class ClipItem {
         preview: String,
         createdAt: Date = Date(),
         isPinned: Bool = false,
-        sourceApp: String? = nil
+        sourceApp: String? = nil,
+        contentHash: String
     ) {
         self.id = id
         self.type = type
@@ -36,5 +38,6 @@ final class ClipItem {
         self.createdAt = createdAt
         self.isPinned = isPinned
         self.sourceApp = sourceApp
+        self.contentHash = contentHash
     }
 }

@@ -5,13 +5,13 @@ import SwiftData
 import KeyboardShortcuts
 
 extension KeyboardShortcuts.Name {
-    static let toggleHistory = Self("toggleHistory", default: .init(.v, modifiers: [.command, .shift]))
+    static let toggleHistory = Self("toggleHistory", initial: .init(.v, modifiers: [.command, .shift]))
 }
 
 @Observable
 @MainActor
 class HotKeyManager {
-    private var panel: NSPanel?
+    private var panel: FloatingPanel?
     private let modelContainer: ModelContainer
 
     init(modelContainer: ModelContainer) {
@@ -39,13 +39,13 @@ class HotKeyManager {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    private func makePanel() -> NSPanel {
-        let hostingView = NSHostingView(
+    private func makePanel() -> FloatingPanel {
+        let hostingView = FirstMouseHostingView(
             rootView: HistoryWindow()
                 .modelContainer(modelContainer)
         )
 
-        let panel = NSPanel(
+        let panel = FloatingPanel(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 500),
             styleMask: [.titled, .closable, .nonactivatingPanel, .fullSizeContentView],
             backing: .buffered,

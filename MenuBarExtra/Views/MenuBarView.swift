@@ -20,7 +20,7 @@ struct MenuBarView: View {
             } else {
                 ForEach(recentItems) { item in
                     Button {
-                        copyToPasteboard(item)
+                        Paster.copy(item)
                     } label: {
                         Text(item.preview)
                             .lineLimit(1)
@@ -31,7 +31,7 @@ struct MenuBarView: View {
             Divider()
 
             Button("Clear History") {
-                clearHistory()
+                ClipStore.clearHistory(in: modelContext)
             }
             .disabled(allItems.isEmpty)
 
@@ -42,15 +42,4 @@ struct MenuBarView: View {
         .padding(8)
     }
 
-    private func copyToPasteboard(_ item: ClipItem) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(item.textContent ?? "", forType: .string)
-    }
-
-    private func clearHistory() {
-        for item in allItems {
-            modelContext.delete(item)
-        }
-        try? modelContext.save()
-    }
 }
