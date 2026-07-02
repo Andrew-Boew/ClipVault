@@ -30,6 +30,10 @@ struct MenuBarView: View {
 
             Divider()
 
+            SettingsLink {
+                Text("Settings…")
+            }
+
             Button("Clear History") {
                 ClipStore.clearHistory(in: modelContext)
             }

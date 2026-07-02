@@ -12,10 +12,19 @@ struct HistoryWindow: View {
     @FocusState private var isSearchFocused: Bool
 
     private var filteredItems: [ClipItem] {
-        guard !searchText.isEmpty else { return items }
-        return items.filter { item in
-            item.preview.localizedCaseInsensitiveContains(searchText)
-                || (item.textContent?.localizedCaseInsensitiveContains(searchText) ?? false)
+        let matching: [ClipItem]
+        if searchText.isEmpty {
+            matching = items
+        } else {
+            matching = items.filter { item in
+                item.preview.localizedCaseInsensitiveContains(searchText)
+                    || (item.textContent?.localizedCaseInsensitiveContains(searchText) ?? false)
+                    || (item.sourceApp?.localizedCaseInsensitiveContains(searchText) ?? false)
+            }
+        }
+        return matching.sorted { lhs, rhs in
+            if lhs.isPinned != rhs.isPinned { return lhs.isPinned }
+            return lhs.createdAt > rhs.createdAt
         }
     }
 
@@ -35,6 +44,16 @@ struct HistoryWindow: View {
                                     pasteSelected()
                                 }
                             )
+                            .contextMenu {
+                                Button(item.isPinned ? "Unpin" : "Pin") {
+                                    item.isPinned.toggle()
+                                    try? modelContext.save()
+                                }
+                                Button("Delete", role: .destructive) {
+                                    ClipStore.delete(item, in: modelContext)
+                                    try? modelContext.save()
+                                }
+                            }
                     }
                 }
                 .padding(8)

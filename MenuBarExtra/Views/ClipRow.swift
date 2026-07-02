@@ -24,6 +24,12 @@ struct ClipRow: View {
                 .foregroundStyle(isSelected ? Color.white : .primary)
 
             Spacer(minLength: 0)
+
+            if item.isPinned {
+                Image(systemName: "pin.fill")
+                    .font(.caption)
+                    .foregroundStyle(isSelected ? Color.white : .orange)
+            }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)

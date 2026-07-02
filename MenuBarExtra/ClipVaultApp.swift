@@ -18,19 +18,27 @@ struct ClipVaultApp: App {
 
     private let pasteboardMonitor: PasteboardMonitor
     private let hotKeyManager: HotKeyManager
+    private let screenshotWatcher: ScreenshotWatcher
 
     init() {
         let container = sharedModelContainer
+        ClipStore.enforceLimits(in: container.mainContext)
         let monitor = PasteboardMonitor(modelContext: container.mainContext)
         monitor.startMonitoring()
         pasteboardMonitor = monitor
         hotKeyManager = HotKeyManager(modelContainer: container)
+        screenshotWatcher = ScreenshotWatcher()
+        screenshotWatcher.start()
     }
 
     var body: some Scene {
         MenuBarExtra("ClipVault", systemImage: "doc.on.clipboard") {
             MenuBarView()
                 .modelContainer(sharedModelContainer)
+        }
+
+        Settings {
+            SettingsView()
         }
     }
 }

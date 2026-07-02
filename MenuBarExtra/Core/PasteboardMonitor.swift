@@ -32,6 +32,8 @@ class PasteboardMonitor {
         guard currentChangeCount != lastChangeCount else { return }
         lastChangeCount = currentChangeCount
 
+        if isExcludedApp() { return }
+
         if let imageItem = readImage() ?? readImageFile() {
             save(imageItem)
             return
@@ -40,6 +42,15 @@ class PasteboardMonitor {
         guard let copiedText = NSPasteboard.general.string(forType: .string), !copiedText.isEmpty else { return }
         guard let item = makeTextOrURLItem(from: copiedText) else { return }
         save(item)
+    }
+
+    private func isExcludedApp() -> Bool {
+        guard let appName = frontmostAppName else { return false }
+        return AppSettings.excludedApps.contains { $0.caseInsensitiveCompare(appName) == .orderedSame }
+    }
+
+    private var frontmostAppName: String? {
+        NSWorkspace.shared.frontmostApplication?.localizedName
     }
 
     private func readImage() -> ClipItem? {
@@ -68,7 +79,7 @@ class PasteboardMonitor {
         guard let path = saveImageToDisk(pngData) else { return nil }
 
         let preview = "Image (\(bitmap.pixelsWide)×\(bitmap.pixelsHigh))"
-        return ClipItem(type: .image, imagePath: path, preview: preview, contentHash: hash)
+        return ClipItem(type: .image, imagePath: path, preview: preview, sourceApp: frontmostAppName, contentHash: hash)
     }
 
     private func saveImageToDisk(_ pngData: Data) -> String? {
@@ -91,17 +102,18 @@ class PasteboardMonitor {
         guard hash != lastSavedHash else { return nil }
 
         if let url = URL(string: text), url.scheme != nil, url.host != nil {
-            return ClipItem(type: .url, textContent: text, preview: text, contentHash: hash)
+            return ClipItem(type: .url, textContent: text, preview: text, sourceApp: frontmostAppName, contentHash: hash)
         }
 
         let preview = String(text.prefix(100))
-        return ClipItem(type: .text, textContent: text, preview: preview, contentHash: hash)
+        return ClipItem(type: .text, textContent: text, preview: preview, sourceApp: frontmostAppName, contentHash: hash)
     }
 
     private func save(_ item: ClipItem) {
         modelContext.insert(item)
         try? modelContext.save()
         lastSavedHash = item.contentHash
+        ClipStore.enforceLimits(in: modelContext)
     }
 
     private func sha256(_ data: Data) -> String {
